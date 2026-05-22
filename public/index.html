@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Replication Hub</title>
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon"><i class="fa-solid fa-clone"></i></div>
+                <div class="logo-text">REPLICA<span>HUB</span></div>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-item active" onclick="switchTab('dashboard')">
+                    <i class="fa-solid fa-chart-line"></i> Dashboard
+                </button>
+                <button class="nav-item" onclick="switchTab('keys')">
+                    <i class="fa-solid fa-key"></i> API Keys
+                </button>
+                <button class="nav-item" onclick="switchTab('docs')">
+                    <i class="fa-solid fa-book-bookmark"></i> API Reference
+                </button>
+                <button class="nav-item" onclick="switchTab('logs')">
+                    <i class="fa-solid fa-database"></i> Replicated Logs
+                </button>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <p>Status: <span class="status-badge connected"><span class="dot"></span> Online</span></p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="content-header">
+                <div class="header-title">
+                    <h1 id="page-title">Dashboard Overview</h1>
+                    <p id="page-subtitle">Monitor and manage your API replication status in real-time.</p>
+                </div>
+                <div class="user-profile">
+                    <div class="avatar"><i class="fa-solid fa-user-shield"></i></div>
+                    <span class="user-name">Developer Mode</span>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <section id="tab-dashboard" class="tab-pane active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon purple"><i class="fa-solid fa-upload"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Sync Requests</span>
+                            <span class="stat-val" id="stat-total-sync">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green"><i class="fa-solid fa-check-circle"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Successful Syncs</span>
+                            <span class="stat-val" id="stat-success-sync">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon blue"><i class="fa-solid fa-key"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Active API Keys</span>
+                            <span class="stat-val" id="stat-active-keys">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-details">
+                    <div class="details-card glass-panel">
+                        <h2>Quick Integration Guide</h2>
+                        <ol class="guide-list">
+                            <li>Ensure you have run the <span class="code-inline">schema.sql</span> script inside your Supabase SQL Editor.</li>
+                            <li>Configure the <span class="code-inline">.env</span> file with your Supabase credentials and start the server.</li>
+                            <li>Go to the <strong>API Keys</strong> tab to generate your custom access key.</li>
+                            <li>Point your clients to this server's endpoint using your key in the <span class="code-inline">X-API-Key</span> header.</li>
+                        </ol>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="switchTab('docs')">View API Docs <i class="fa-solid fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="details-card glass-panel">
+                        <h2>Recent Sync Activities</h2>
+                        <div class="table-container mini-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Announcer</th>
+                                        <th>Amount</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-logs-tbody">
+                                    <tr>
+                                        <td colspan="4" class="empty-placeholder">No announcements captured yet. Set up a key and test the API!</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API Keys View -->
+            <section id="tab-keys" class="tab-pane">
+                <div class="glass-panel">
+                    <h2>Manage API Keys</h2>
+                    <p class="panel-desc">Generate secure API keys to authorize external requests. These keys must be sent in the <code>X-API-Key</code> request header.</p>
+                    
+                    <form id="key-generator-form" class="key-gen-form" onsubmit="generateApiKey(event)">
+                        <div class="form-group">
+                            <input type="text" id="key-name-input" placeholder="e.g., UAT client integration" required>
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Generate Key</button>
+                        </div>
+                    </form>
+
+                    <!-- Newly Created Key Alert -->
+                    <div id="new-key-alert" class="new-key-alert" style="display: none;">
+                        <div class="alert-content">
+                            <h4><i class="fa-solid fa-circle-check"></i> Key Created Successfully!</h4>
+                            <p>Copy this key now. For your security, it will not be shown in full again.</p>
+                            <div class="key-display-box">
+                                <code id="new-key-value">NSS-XXXX-XXXX-XXXX</code>
+                                <button onclick="copyToClipboard('new-key-value')" class="btn btn-copy" title="Copy Key">
+                                    <i class="fa-regular fa-copy"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Your Active Keys</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Key Description</th>
+                                    <th>Token Preview</th>
+                                    <th>Created At</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="keys-tbody">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API Docs View -->
+            <section id="tab-docs" class="tab-pane">
+                <div class="glass-panel">
+                    <h2>API Endpoint Reference</h2>
+                    <p class="panel-desc">Replicate client announcements by POSTing the client payloads here. All endpoints require custom API Key authentication.</p>
+                    
+                    <div class="endpoint-header">
+                        <span class="method post">POST</span>
+                        <code class="endpoint-url">/api/nssapi/ashram/InsertAnnounceCreation</code>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Headers Required</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Header Name</th>
+                                        <th>Value Type</th>
+                                        <th>Required</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>Content-Type</code></td>
+                                        <td>String</td>
+                                        <td>Yes</td>
+                                        <td>Must be <code>application/json</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>X-API-Key</code></td>
+                                        <td>String</td>
+                                        <td>Yes</td>
+                                        <td>Your custom generated API key.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Payload & Dynamic Curl Builder</h3>
+                        <p class="section-desc">Select an active key below to automatically construct a copy-pasteable curl command for testing.</p>
+                        
+                        <div class="form-group select-key-container">
+                            <label for="curl-key-select">Select Authenticating Key:</label>
+                            <select id="curl-key-select" onchange="updateCurlCommand()">
+                                <option value="YOUR_API_KEY_HERE">Select a key to populate curl</option>
+                            </select>
+                        </div>
+
+                        <div class="code-block-header">
+                            <span>cURL Request Example</span>
+                            <button class="btn-copy-code" onclick="copyToClipboard('curl-code')"><i class="fa-regular fa-copy"></i> Copy Command</button>
+                        </div>
+                        <pre><code id="curl-code">Loading curl template...</code></pre>
+                    </div>
+
+                    <div class="docs-section">
+                        <h3>Response Schema</h3>
+                        <div class="code-block-header">
+                            <span>200 Success JSON Response</span>
+                        </div>
+                        <pre><code>{
+    "masterDetails": [
+        {
+            "code": 519758.0,
+            "msg": "Announce Id:519758 created Successfully",
+            "status": "success"
+        }
+    ]
+}</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Logs View -->
+            <section id="tab-logs" class="tab-pane">
+                <div class="glass-panel">
+                    <h2>Replicated Logs Viewer</h2>
+                    <p class="panel-desc">View and inspect the latest records successfully saved in Supabase database tables.</p>
+                    
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Announcer Name</th>
+                                    <th>Amount</th>
+                                    <th>Phone / Mobile</th>
+                                    <th>Sync Time</th>
+                                    <th>Purposes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-tbody">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">
+        <span id="toast-message">Message copied!</span>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="detail-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h3>Announcement Details</h3>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body-content">
+                <!-- Loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
