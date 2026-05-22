@@ -781,3 +781,124 @@ async def insert_receipt(
             status_code=500,
             detail=str(e)
         )
+    
+
+# ==========================================
+# GET EVENTS API
+# ==========================================
+
+@app.get("/api/nssapi/chatBoat/getDataBasedOnParam")
+async def get_events(
+    type: str = None,
+    city: str = None,
+    state: str = None,
+    search: str = None,
+    limit: int = 15,
+    APIkey: str = Header(None)
+):
+
+    # ==========================================
+    # API KEY CHECK
+    # ==========================================
+
+    if APIkey != API_KEY:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API Key"
+        )
+
+    try:
+
+        query = (
+            supabase.table("chatboat_events")
+            .select("*")
+        )
+
+        # ==========================================
+        # FILTER BY TYPE
+        # ==========================================
+
+        if type:
+
+            query = query.ilike(
+                "contact_cat_name",
+                f"%{type}%"
+            )
+
+        # ==========================================
+        # FILTER BY CITY
+        # ==========================================
+
+        if city:
+
+            query = query.ilike(
+                "city_name",
+                f"%{city}%"
+            )
+
+        # ==========================================
+        # FILTER BY STATE
+        # ==========================================
+
+        if state:
+
+            query = query.ilike(
+                "state_name",
+                f"%{state}%"
+            )
+
+        # ==========================================
+        # SEARCH EVENT NAME
+        # ==========================================
+
+        if search:
+
+            query = query.ilike(
+                "event_name",
+                f"%{search}%"
+            )
+
+        # ==========================================
+        # LIMIT
+        # ==========================================
+
+        response = (
+            query
+            .limit(limit)
+            .execute()
+        )
+
+        # ==========================================
+        # RETURN SAME FORMAT
+        # ==========================================
+
+        final_data = []
+
+        for item in response.data:
+
+            final_data.append({
+                "EventId": item.get("event_id"),
+                "EventName": item.get("event_name"),
+                "EventStartDate": item.get("event_start_date"),
+                "EventEndDate": item.get("event_end_date"),
+                "Address_ENG": item.get("address_eng"),
+                "Contact_CatId": item.get("contact_cat_id"),
+                "Contact_CatName": item.get("contact_cat_name"),
+                "Sub_CatId": item.get("sub_cat_id"),
+                "Sub_CatName": item.get("sub_cat_name"),
+                "CITY_NAME": item.get("city_name"),
+                "DISTRICT_NAME": item.get("district_name"),
+                "STATE_NAME": item.get("state_name")
+            })
+
+        return {
+            "DataList": final_data
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+    
