@@ -1,34 +1,29 @@
 # main.py
+
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse
-from supabase import create_client, Client
+from supabase import create_client
 from dotenv import load_dotenv
-from datetime import datetime
 import os
 import random
 
+# ==========================================
+# LOAD ENV
+# ==========================================
+
 load_dotenv()
-
-app = FastAPI()
-
-# ======================================
-# SUPABASE CONFIG
-# ======================================
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+API_KEY = os.getenv("API_KEY")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# ======================================
-# API KEY
-# ======================================
+app = FastAPI()
 
-API_KEY = "MY_SECRET_API_KEY"
-
-# ======================================
-# ALL REQUIRED FIELDS
-# ======================================
+# ==========================================
+# REQUIRED FIELDS
+# ==========================================
 
 REQUIRED_FIELDS = [
     "annoucePurposeList",
@@ -82,19 +77,27 @@ REQUIRED_FIELDS = [
     "pincode"
 ]
 
-# ======================================
-# API
-# ======================================
+# ==========================================
+# HEALTH CHECK
+# ==========================================
+
+@app.get("/")
+def health():
+    return {"status": "running"}
+
+# ==========================================
+# MAIN API
+# ==========================================
 
 @app.post("/api/nssapi/ashram/InsertAnnounceCreation")
-async def create_announce(
+def create_announcement(
     payload: dict,
     APIKey: str = Header(None)
 ):
 
-    # ======================================
-    # API KEY VALIDATION
-    # ======================================
+    # ==========================================
+    # API KEY CHECK
+    # ==========================================
 
     if APIKey != API_KEY:
         raise HTTPException(
@@ -102,9 +105,9 @@ async def create_announce(
             detail="Invalid API Key"
         )
 
-    # ======================================
-    # CHECK ALL FIELDS EXIST
-    # ======================================
+    # ==========================================
+    # CHECK ALL REQUIRED FIELDS
+    # ==========================================
 
     missing_fields = []
 
@@ -121,9 +124,9 @@ async def create_announce(
             }
         )
 
-    # ======================================
-    # MANDATORY FIELD VALUE CHECK
-    # ======================================
+    # ==========================================
+    # MANDATORY VALUE CHECK
+    # ==========================================
 
     if not payload.get("data_flag"):
         raise HTTPException(
@@ -137,51 +140,73 @@ async def create_announce(
             detail="mob_no is mandatory"
         )
 
-    # ======================================
+    # ==========================================
     # DUPLICATE MOBILE CHECK
-    # ======================================
+    # ==========================================
 
-    existing = (
-        supabase.table("announce_creation")
+    duplicate = (
+        supabase.table("announcement_purposes")
         .select("id")
         .eq("mob_no", payload["mob_no"])
         .execute()
     )
 
-    if existing.data and len(existing.data) > 0:
+    if duplicate.data:
         raise HTTPException(
             status_code=409,
-            detail="Announce already exists with this mobile number"
+            detail="Announcement already exists with this mobile number"
         )
-
-    # ======================================
-    # GENERATE ANNOUNCE ID
-    # ======================================
-
-    announce_id = random.randint(100000, 999999)
-
-    payload["announce_id"] = announce_id
-    payload["created_at"] = datetime.now().isoformat()
-
-    # ======================================
-    # INSERT INTO SUPABASE
-    # ======================================
 
     try:
 
-        insert_response = (
-            supabase.table("announce_creation")
-            .insert(payload)
+        # ==========================================
+        # EXTRACT FIRST PURPOSE ITEM
+        # ==========================================
+
+        purpose_list = payload.get("annoucePurposeList", [])
+
+        first_purpose = {}
+
+        if len(purpose_list) > 0:
+            first_purpose = purpose_list[0]
+
+        # ==========================================
+        # GENERATE ANNOUNCE CODE
+        # ==========================================
+
+        announce_code = random.randint(100000, 999999)
+
+        # ==========================================
+        # INSERT INTO EXISTING TABLE
+        # ==========================================
+
+        insert_data = {
+            "announcement_id": announce_code,
+            "yojna_id": first_purpose.get("yojna_id"),
+            "qty": first_purpose.get("qty"),
+            "amount": first_purpose.get("amount"),
+            "bhojan_date": first_purpose.get("bhojan_date"),
+            "raw_aannounce_json": payload,
+            "mob_no": payload.get("mob_no")
+        }
+
+        (
+            supabase.table("announcement_purposes")
+            .insert(insert_data)
             .execute()
         )
+
+        # ==========================================
+        # SUCCESS RESPONSE
+        # ==========================================
 
         return JSONResponse(
             status_code=201,
             content={
                 "masterDetails": [
                     {
-                        "code": announce_id,
-                        "msg": f"Announce Id:{announce_id} created Successfully",
+                        "code": announce_code,
+                        "msg": f"Announce Id:{announce_code} created Successfully",
                         "status": "success"
                     }
                 ]
@@ -194,14 +219,3 @@ async def create_announce(
             status_code=500,
             detail=str(e)
         )
-
-
-# ======================================
-# HEALTH CHECK
-# ======================================
-
-@app.get("/")
-async def health():
-    return {
-        "status": "running"
-    }
